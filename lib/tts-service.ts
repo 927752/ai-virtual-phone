@@ -187,11 +187,14 @@ async function synthesizeElevenLabs(text: string, config: VoiceApiConfig): Promi
     const voiceId = config.defaultVoice || "21m00Tcm4TlvDq8ikWAM"; // Rachel 默认音色
     const modelId = config.model || "eleven_multilingual_v2";
 
+    // 过滤掉可能意外包含的中文字符、换行或非法字符，防止浏览器报 non ISO-8859-1 code point
+    const safeApiKey = config.apiKey.trim().replace(/[^\x00-\x7F]/g, "");
+
     const response = await fetchWithTimeout(`${baseUrl}/text-to-speech/${voiceId}`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
-            "xi-api-key": config.apiKey.trim(),
+            "xi-api-key": safeApiKey,
         },
         body: JSON.stringify({
             text,
