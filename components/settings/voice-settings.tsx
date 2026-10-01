@@ -737,12 +737,30 @@ export function VoiceSettings() {
                                                 </div>
                                                 <div className="flex flex-col gap-1">
                                                     <label className="menu-desc ml-1">语音模型 (Model ID)</label>
+                                                    <div className="flex gap-2">
+                                                        <select
+                                                            value={["eleven_multilingual_v2", "eleven_turbo_v2_5", "eleven_flash_v2_5"].includes(config.model || "") ? config.model : "__manual__"}
+                                                            onChange={(e) => {
+                                                                if (e.target.value !== "__manual__") {
+                                                                    updateConfig(config.id, { model: e.target.value });
+                                                                }
+                                                            }}
+                                                            className="ui-select flex-1"
+                                                        >
+                                                            <option value="eleven_multilingual_v2">eleven_multilingual_v2 (支持中文/官方稳定主力)</option>
+                                                            <option value="eleven_turbo_v2_5">eleven_turbo_v2_5 (最新极速低延迟/高自然度)</option>
+                                                            <option value="eleven_flash_v2_5">eleven_flash_v2_5 (高性价比极速版)</option>
+                                                            <option value="__manual__">自定义模型 ID...</option>
+                                                        </select>
+                                                    </div>
                                                     <Input
                                                         type="text"
                                                         value={config.model || ""}
                                                         onChange={(e) => updateConfig(config.id, { model: e.target.value })}
-                                                        placeholder="eleven_multilingual_v2（支持中文等多语言）"
+                                                        placeholder="可输入自定义模型 ID，如 eleven_turbo_v2_5"
+                                                        className="mt-1"
                                                     />
+                                                    <span className="menu-desc ml-1">支持 ElevenLabs 官方所有模型，推荐 Turbo v2.5 或 Multilingual v2</span>
                                                 </div>
                                             </>
                                         )}
