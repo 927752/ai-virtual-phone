@@ -26,25 +26,48 @@ export function resolveVoiceConfig(characterId: string, appId?: ContentAppId): V
  * - Minimax: REST API → hex-encoded mp3
  * - OpenAI: REST API → binary audio blob
  */
+/**
+ * 从用于语音合成的文本中过滤非发音标签、提示词和动作标记：
+ * 1. 过滤 HTML 标签与尖括号标签，如 <think>...</think>, <action>...</action>, <smile> 等
+ * 2. 过滤常见中括号指令与动作，如 [内心:xxx], [动作:xxx], [表情:xxx]
+ * 3. 过滤星号动作描述，如 *轻轻一笑*
+ */
+export function sanitizeTextForTTS(rawText: string): string {
+    if (!rawText) return "";
+    return rawText
+        // 1. 去除成对的尖括号标签块及其内部内容（如 <think>...</think> 或 <action>...</action>）
+        .replace(/<([a-zA-Z0-9_-]+)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
+        // 2. 去除单独的尖括号标签与自闭合标签（如 <smile>, <br/>, <audio ...> 等）
+        .replace(/<[^>]+>/g, "")
+        // 3. 去除成对的星号动作描写（如 *叹了口气*）
+        .replace(/\*[^*]+\*/g, "")
+        // 4. 去除可能残留的常见非口播指令方括号块（如 [表情:xxx], [内心:xxx], [状态:xxx]）
+        .replace(/\[(?:内心|动作|表情|状态|好感度|转账|红包|图片|语音|位置|音乐|系统)[^\]]*\]/gi, "")
+        // 5. 收拢多余连续空白换行
+        .replace(/\n{3,}/g, "\n\n")
+        .trim();
+}
+
 export async function synthesizeSpeech(
     text: string,
     voiceConfig: VoiceApiConfig,
     options?: { emotion?: string },
 ): Promise<Blob | null> {
-    if (!text.trim()) return null;
+    const cleanText = sanitizeTextForTTS(text);
+    if (!cleanText) return null;
 
     const provider = voiceConfig.provider;
 
     if (provider === "Minimax") {
-        return synthesizeMinimax(text, voiceConfig, options?.emotion);
+        return synthesizeMinimax(cleanText, voiceConfig, options?.emotion);
     }
 
     if (provider === "OpenAI") {
-        return synthesizeOpenAI(text, voiceConfig);
+        return synthesizeOpenAI(cleanText, voiceConfig);
     }
 
     if (provider === "ElevenLabs") {
-        return synthesizeElevenLabs(text, voiceConfig);
+        return synthesizeElevenLabs(cleanText, voiceConfig);
     }
 
     return null;
