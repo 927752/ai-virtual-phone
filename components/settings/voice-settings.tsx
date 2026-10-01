@@ -546,6 +546,18 @@ export function VoiceSettings() {
                 const merged = uniqueOptions([...fetched, ...DEFAULT_ELEVENLABS_VOICES]);
                 updateConfig(config.id, { customVoices: merged });
                 setFetchedVoices(prev => ({ ...prev, [config.id]: merged }));
+
+                // 同步拉取官方全部可用 models 列表
+                try {
+                    const modelsRes = await fetch(`${baseUrl}/models`, {
+                        headers: { "xi-api-key": safeKey },
+                    });
+                    if (modelsRes.ok) {
+                        const modelsData = await modelsRes.json();
+                        const modelList = Array.isArray(modelsData) ? modelsData : modelsData?.models || [];
+                        console.log("[ElevenLabs] Available models in your account:", modelList.map((m: any) => m.model_id));
+                    }
+                } catch { /* ignore model fetch failure */ }
             } else {
                 throw new Error("该服务商暂不支持拉取音色列表");
             }
