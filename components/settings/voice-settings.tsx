@@ -523,8 +523,31 @@ export function VoiceSettings() {
 
             } else if (config.provider === "OpenAI") {
                 setFetchedVoices(prev => ({ ...prev, [config.id]: DEFAULT_OPENAI_VOICES }));
+            } else if (config.provider === "ElevenLabs") {
+                if (!config.apiKey.trim()) {
+                    setFetchedVoices(prev => ({ ...prev, [config.id]: DEFAULT_ELEVENLABS_VOICES }));
+                    setFetchError(prev => ({ ...prev, [config.id]: "填写 API Key 后可拉取你的自定义音色" }));
+                    return;
+                }
+                const baseUrl = (config.baseUrl || "https://api.elevenlabs.io/v1").replace(/\/$/, "");
+                const safeKey = config.apiKey.trim().replace(/[^\x00-\x7F]/g, "");
+                const res = await fetch(`${baseUrl}/voices`, {
+                    headers: { "xi-api-key": safeKey },
+                });
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.detail?.message || `获取音色列表失败 (${res.status})`);
+                }
+                const data = await res.json();
+                const fetched = (data.voices || []).map((v: { voice_id: string; name: string; category?: string }) => ({
+                    id: v.voice_id,
+                    name: `${v.name} (${v.category || "custom"})`,
+                }));
+                const merged = uniqueOptions([...fetched, ...DEFAULT_ELEVENLABS_VOICES]);
+                updateConfig(config.id, { customVoices: merged });
+                setFetchedVoices(prev => ({ ...prev, [config.id]: merged }));
             } else {
-                throw new Error("该服务商暂不支持拉取模型列表");
+                throw new Error("该服务商暂不支持拉取音色列表");
             }
         } catch (error: unknown) {
             const msg = error instanceof Error ? error.message : String(error);
@@ -950,7 +973,7 @@ export function VoiceSettings() {
                                                         className="ui-btn ui-btn ui-btn-soft-action w-full"
                                                     >
                                                         <RefreshCw size={16} className={isFetching[config.id] ? "animate-spin" : ""} />
-                                                        {isFetching[config.id] ? "同步中..." : config.provider === "Minimax" ? "同步音色列表" : "显示默认音色"}
+                                                        {isFetching[config.id] ? "同步中..." : config.provider === "Minimax" || config.provider === "ElevenLabs" ? "同步音色列表" : "显示默认音色"}
                                                     </button>
                                                     {config.provider === "Minimax" && (
                                                         <button
