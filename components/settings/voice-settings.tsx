@@ -10,7 +10,7 @@ import { ConfirmDialog } from "@/components/ui/modal";
 import { Toggle, Input } from "@/components/ui/form";
 import { Alert } from "@/components/ui/feedback";
 
-const SUPPORTED_VOICE_PROVIDERS = new Set(["Minimax", "OpenAI"]);
+const SUPPORTED_VOICE_PROVIDERS = new Set(["Minimax", "OpenAI", "ElevenLabs"]);
 const MINIMAX_BASE_URL_OPTIONS = [
     { id: "cn", label: "国内版", baseUrl: "https://api.minimaxi.com/v1" },
     { id: "global", label: "海外版", baseUrl: "https://api.minimax.io/v1" },
@@ -28,8 +28,18 @@ const MINIMAX_PITCH_STEP = 1;
 const DEFAULT_SPEECH_PITCH = 0;
 const VOICE_PROVIDER_OPTIONS = [
     { value: "OpenAI", label: "OpenAI TTS" },
+    { value: "ElevenLabs", label: "ElevenLabs TTS" },
     { value: "MinimaxCN", label: "Minimax 语音国内版" },
     { value: "MinimaxGlobal", label: "Minimax 语音海外版" },
+];
+
+const DEFAULT_ELEVENLABS_VOICES = [
+    { id: "21m00Tcm4TlvDq8ikWAM", name: "Rachel (默认女声)" },
+    { id: "AZnzlk1XvdvUeBnXmlld", name: "Domi (强力女声)" },
+    { id: "EXAVITQu4vr4xnSDxMaL", name: "Bella (温柔女声)" },
+    { id: "ErXwobaYiN019PkySvjV", name: "Antoni (青年男声)" },
+    { id: "VR6AewLTigWG4xSOukaG", name: "Arnold (沉稳男声)" },
+    { id: "pNInz6obpgDQGcFmaJgB", name: "Adam (叙述男声)" },
 ];
 
 const DEFAULT_VOICE_CONFIGS: VoiceApiConfig[] = [
@@ -182,7 +192,9 @@ function uniqueOptions(options: VoiceOption[]): VoiceOption[] {
 }
 
 function defaultVoiceOptions(provider: string): VoiceOption[] {
-    return provider === "OpenAI" ? DEFAULT_OPENAI_VOICES : DEFAULT_MINIMAX_VOICES;
+    if (provider === "OpenAI") return DEFAULT_OPENAI_VOICES;
+    if (provider === "ElevenLabs") return DEFAULT_ELEVENLABS_VOICES;
+    return DEFAULT_MINIMAX_VOICES;
 }
 
 function voiceOptionsForConfig(config: VoiceApiConfig, fetchedVoices: Record<string, VoiceOption[]>): VoiceOption[] {
@@ -222,6 +234,7 @@ function makeCloneVoiceId(config: VoiceApiConfig): string {
 
 function providerSelectValue(config: VoiceApiConfig): string {
     if (config.provider === "OpenAI") return "OpenAI";
+    if (config.provider === "ElevenLabs") return "ElevenLabs";
     return config.baseUrl === GLOBAL_MINIMAX_BASE_URL ? "MinimaxGlobal" : "MinimaxCN";
 }
 
@@ -310,6 +323,17 @@ export function VoiceSettings() {
                 baseUrl: "https://api.openai.com/v1",
                 model: "tts-1",
                 defaultVoice: "alloy",
+            });
+            setManualModelIds(prev => ({ ...prev, [id]: true }));
+            setManualVoiceIds(prev => ({ ...prev, [id]: false }));
+            return;
+        }
+        if (providerOption === "ElevenLabs") {
+            updateConfig(id, {
+                provider: "ElevenLabs",
+                baseUrl: "https://api.elevenlabs.io/v1",
+                model: "eleven_multilingual_v2",
+                defaultVoice: "21m00Tcm4TlvDq8ikWAM",
             });
             setManualModelIds(prev => ({ ...prev, [id]: true }));
             setManualVoiceIds(prev => ({ ...prev, [id]: false }));
@@ -677,6 +701,29 @@ export function VoiceSettings() {
                                                 placeholder="输入密钥..."
                                             />
                                         </div>
+                                        {config.provider === "ElevenLabs" && (
+                                            <>
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="menu-desc ml-1">接口地址 (Base URL)</label>
+                                                    <Input
+                                                        type="text"
+                                                        value={config.baseUrl || ""}
+                                                        onChange={(e) => updateConfig(config.id, { baseUrl: e.target.value })}
+                                                        placeholder="https://api.elevenlabs.io/v1"
+                                                    />
+                                                </div>
+                                                <div className="flex flex-col gap-1">
+                                                    <label className="menu-desc ml-1">语音模型 (Model ID)</label>
+                                                    <Input
+                                                        type="text"
+                                                        value={config.model || ""}
+                                                        onChange={(e) => updateConfig(config.id, { model: e.target.value })}
+                                                        placeholder="eleven_multilingual_v2（支持中文等多语言）"
+                                                    />
+                                                </div>
+                                            </>
+                                        )}
+
                                         {config.provider === "OpenAI" && (
                                             <>
                                                 <div className="flex flex-col gap-1">
